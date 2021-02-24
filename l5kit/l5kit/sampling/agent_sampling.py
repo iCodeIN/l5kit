@@ -214,10 +214,9 @@ def generate_agent_sample(
         future_tl_faces,
     ) = get_agent_context(state_index, frames, agents, tl_faces, history_num_frames, future_num_frames, )
 
-    original_history_speed = np.linalg.norm(history_frames[0]["ego_translation"][:2] - history_frames[1]["ego_translation"][:2]) / step_time
-    speed_perturb_params = (1.0, 0.0)
+    curr_speed = None
     if perturbation is not None and len(future_frames) == future_num_frames:
-        history_frames, future_frames, speed_perturb_params = perturbation.perturb(
+        history_frames, future_frames, curr_speed = perturbation.perturb(
             history_frames=history_frames, future_frames=future_frames
         )
 
@@ -260,7 +259,7 @@ def generate_agent_sample(
 
     history_vels_mps, future_vels_mps = compute_agent_velocity(history_positions_m, future_positions_m, step_time)
 
-    return {
+    result = {
         "frame_index": state_index,
         "image": input_im,
         "target_positions": future_positions_m,
@@ -278,8 +277,10 @@ def generate_agent_sample(
         "world_from_agent": world_from_agent,
         "centroid": agent_centroid_m,
         "yaw": agent_yaw_rad,
-        "speed": original_history_speed * speed_perturb_params[0] + speed_perturb_params[1],
         "extent": agent_extent_m,
         "history_extents": history_extents,
         "future_extents": future_extents,
     }
+    if len(history_vels_mps) > 0:
+        result["speed"] = curr_speed if curr_speed is not None else np.linalg.norm(history_vels_mps[0])
+    return result
